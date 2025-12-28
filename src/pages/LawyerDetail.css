@@ -1,0 +1,171 @@
+/* Lawyer Detail Page Custom Styles */
+.lawyer-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.lawyer-image-container {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.lawyer-image-container img {
+  transition: transform 0.5s ease;
+}
+
+.lawyer-image-container:hover img {
+  transform: scale(1.05);
+}
+
+.verification-badge {
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.featured-badge {
+  background: linear-gradient(135deg, #9E7FFF 0%, #7C3AED 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.specialty-tag {
+  background: rgba(158, 127, 255, 0.1);
+  color: #9E7FFF;
+  border: 1px solid rgba(158, 127, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.specialty-tag:hover {
+  background: rgba(158, 127, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.tab-button {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #9E7FFF;
+}
+
+.review-card {
+  background: linear-gradient(145deg, #262626 0%, #1f1f1f 100%);
+  border: 1px solid #2F2F2F;
+  transition: all 0.3s ease;
+}
+
+.review-card:hover {
+  border-color: #9E7FFF;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(158, 127, 255, 0.1);
+}
+
+.contact-info-card {
+  background: linear-gradient(145deg, #262626 0%, #1f1f1f 100%);
+  border: 1px solid #2F2F2F;
+  transition: all 0.2s ease;
+}
+
+.contact-info-card:hover {
+  border-color: #38bdf8;
+}
+
+.fee-card {
+  background: linear-gradient(145deg, #262626 0%, #1f1f1f 100%);
+  border: 1px solid #2F2F2F;
+  transition: all 0.2s ease;
+}
+
+.fee-card:hover {
+  border-color: #10b981;
+}
+
+.similar-lawyer-card {
+  transition: all 0.3s ease;
+}
+
+.similar-lawyer-card:hover {
+  border-color: #9E7FFF;
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px rgba(158, 127, 255, 0.15);
+}
+
+/* Animation for tab content */
+.tab-content-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.tab-content-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .lawyer-detail-container {
+    padding: 16px;
+  }
+  
+  .specialty-tag {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .tab-button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .lawyer-image-container {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+  
+  .review-card,
+  .contact-info-card,
+  .fee-card {
+    background: linear-gradient(145deg, #1a1a1a 0%, #141414 100%);
+  }
+}
+
+/* Print styles */
+@media print {
+  .lawyer-detail-container {
+    max-width: 100%;
+    padding: 0;
+  }
+  
+  .tab-navigation,
+  .action-buttons,
+  .similar-lawyers {
+    display: none;
+  }
+  
+  .lawyer-image-container {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

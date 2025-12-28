@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public read access for lawyers directory
+    match /lawyers/{lawyerId} {
+      allow read: if true; // Anyone can read lawyer profiles
+      allow write: if request.auth != null && 
+                   (request.auth.uid == lawyerId || // Lawyer can update own profile
+                    hasRole('admin')); // Admin can update any profile
+    }
+    
+    // Intake leads - lawyer-specific access
+    match /intake_leads/{leadId} {
+      allow read: if request.auth != null && 
+                   (resource.data.lawyer_id == request.auth.uid || // Lawyer can read own leads
+                    hasRole('admin')); // Admin can read all leads
+      allow create: if request.auth != null; // Anyone authenticated can create leads
+      allow update: if request.auth != null && 
+                     (resource.data.lawyer_id == request.auth.uid || // Lawyer can update own leads
+                      hasRole('admin')); // Admin can update any leads
+      allow delete: if hasRole('admin'); // Only admin can delete leads
+    }
+    
+    // Users collection - protected access
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+                   (request.auth.uid == userId || // User can read own data
+                    hasRole('admin')); // Admin can read all user data
+      allow write: if request.auth != null && 
+                   (request.auth.uid == userId || // User can update own data
+                    hasRole('admin')); // Admin can update any user data
+    }
+    
+    // Verification requests - admin only
+    match /verification_requests/{requestId} {
+      allow read: if request.auth != null && hasRole('admin');
+      allow write: if request.auth != null && hasRole('admin');
+    }
+    
+    // Messages - conversation participants only
+    match /messages/{messageId} {
+      allow read: if request.auth != null && 
+                   (resource.data.sender_id == request.auth.uid || // Sender can read
+                    resource.data.receiver_id == request.auth.uid); // Receiver can read
+      allow create: if request.auth != null && 
+                     request.resource.data.sender_id == request.auth.uid; // Only sender can create
+    }
+    
+    // Appointments - lawyer-specific access
+    match /appointments/{appointmentId} {
+      allow read: if request.auth != null && 
+                   (resource.data.lawyer_id == request.auth.uid || // Lawyer can read own appointments
+                    resource.data.client_id == request.auth.uid || // Client can read own appointments
+                    hasRole('admin')); // Admin can read all
+      allow write: if request.auth != null && 
+                   (resource.data.lawyer_id == request.auth.uid || // Lawyer can manage own appointments
+                    hasRole('admin')); // Admin can manage all
+    }
+    
+    // Documents - lawyer-specific access
+    match /documents/{documentId} {
+      allow read: if request.auth != null && 
+                   (resource.data.lawyer_id == request.auth.uid || // Lawyer can read own documents
+                    hasRole('admin')); // Admin can read all
+      allow write: if request.auth != null && 
+                   (resource.data.lawyer_id == request.auth.uid || // Lawyer can manage own documents
+                    hasRole('admin')); // Admin can manage all
+    }
+    
+    // Helper function to check user roles
+    function hasRole(role) {
+      return request.auth.token[role] == true;
+    }
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+  }
+}
