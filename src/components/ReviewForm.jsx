@@ -99,7 +99,7 @@ export default function ReviewForm({ lawyerId, lawyerName = 'Unknown Lawyer' }) 
             Submit Another Review
           </button>
           <button
-            onClick={handleViewAdmin}
+            onClick={() => navigate('/login')}
             className="px-6 py-2 border-2 border-primary text-primary font-semibold rounded-lg hover:bg-primary/10 transition-colors"
           >
             View Admin Panel

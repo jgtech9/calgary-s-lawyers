@@ -278,9 +278,9 @@ export default function PersonalizedMatch() {
               </a>
               <Link 
                 to="/how-it-works"
-                className="px-8 py-3 border-2 border-primary text-primary font-semibold rounded-lg hover:bg-primary/10 transition-colors"
+                className="px-8 py-3 border-2 border-primary text-white font-semibold rounded-lg hover:bg-primary/10 transition-colors"
               >
-                Learn How It Works
+                How It Works
               </Link>
             </div>
           </motion.div>

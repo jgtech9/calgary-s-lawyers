@@ -218,7 +218,7 @@ const Header = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-text">
-                  Calgary<span className="text-primary">Lawyers</span>
+                  Calgary's<span className="text-primary">Lawyers</span>
                 </h1>
                 <p className="text-xs text-gray-600 dark:text-textSecondary">Trusted Legal Directory</p>
               </div>

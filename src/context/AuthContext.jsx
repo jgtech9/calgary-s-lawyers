@@ -9,7 +9,8 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -77,10 +78,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Sign In
+  // Google Sign In - FIXED VERSION
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
+      
+      // Add scopes if needed
+      provider.addScope('profile');
+      provider.addScope('email');
+      
+      // Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
       const result = await signInWithPopup(auth, provider);
       
       // Check if user document exists
@@ -97,15 +108,34 @@ export const AuthProvider = ({ children }) => {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           isActive: true,
-          emailVerified: result.user.emailVerified
+          emailVerified: result.user.emailVerified,
+          provider: 'google'
         });
       }
       
-      return { success: true, user: result.user };
+      return { 
+        success: true, 
+        user: result.user,
+        isNewUser: !userDoc.exists()
+      };
     } catch (error) {
       console.error('Google sign-in error:', error);
-      setError(error.message);
-      return { success: false, error: error.message };
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.customData);
+      
+      // Provide more specific error messages
+      let errorMessage = error.message;
+      if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked by your browser. Please allow popups for this site.';
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign-in popup was closed before completing.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized for OAuth operations. Please check Firebase console settings.';
+      }
+      
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     }
   };
 

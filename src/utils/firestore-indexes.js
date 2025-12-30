@@ -54,7 +54,7 @@ export async function testFirestoreIndexes() {
         query: query(
           collection(db, 'lawyers'),
           where('featured', '==', true),
-          order          orderBy('rating', 'desc'),
+          orderBy('rating', 'desc'),
           orderBy('experience', 'desc'),
           limit(10)
         )

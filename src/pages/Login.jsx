@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, Shield, User, ArrowRight, Building, Briefcase, Phone } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { login, signInWithGoogle } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,12 +21,40 @@ export default function Login() {
     setError('')
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const result = await login(formData.email, formData.password)
+      
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.error || 'Failed to sign in')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred.setError', 'An unexpected error occurred. Please try again.')
+    } finally {
       setIsLoading(false)
-      // For demo purposes, navigate to home on successful login
-      navigate('/')
-    }, 1500)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const result = await signInWithGoogle()
+      
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.error || 'Failed to sign in with Google')
+      }
+    } catch (err) {
+      console.error('Google sign-in error:', err)
+      setError('An unexpected error occurred with Google sign-in.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e) => {
@@ -63,7 +93,6 @@ export default function Login() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Login Form */}
           <motion.div 
             className="bg-surface border border-border rounded-2xl p-8"
             initial={{ opacity: 0, x: -20 }}
@@ -171,7 +200,9 @@ export default function Login() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
-                  className="py-3 border border-border rounded-lg hover:bg-surface/80 transition-colors flex items-center justify-center gap-2"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="py-3 border border-border rounded-lg hover:bg-surface/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -201,14 +232,12 @@ export default function Login() {
             </form>
           </motion.div>
 
-          {/* Benefits & Info */}
           <motion.div 
             className="space-y-8"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            {/* User Type Selection */}
             <div className="bg-surface border border-border rounded-2xl p-6">
               <h3 className="text-xl font-bold mb-6">What type of account do you need?</h3>
               <div className="space-y-4">
@@ -234,7 +263,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Benefits */}
             <div className="bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20 rounded-2xl p-6">
               <h3 className="text-xl font-bold mb-6">Benefits of Your Account</h3>
               <div className="space-y-4">
@@ -253,7 +281,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Emergency Contact */}
             <div className="bg-surface border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">

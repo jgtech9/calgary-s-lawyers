@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, User, Phone, Building, Briefcase, Shield, Check, ArrowRight, Target, AlertCircle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext' // 👈 NEW: Firebase auth
+import { useAuth } from '../context/AuthContext'
 
 export default function Signup() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signup, signInWithGoogle } = useAuth() // 👈 NEW: Firebase methods
+  const { signup, signInWithGoogle } = useAuth()
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -24,11 +24,9 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState({})
-  const [hasPrefilledData, setHasPrefilledData] = useState(false) // 👈 NEW: Track if data was pre-filled
+  const [hasPrefilledData, setHasPrefilledData] = useState(false)
 
-  // 👈 NEW: Check for stored matching data on component mount
   useEffect(() => {
-    // Check session storage for matching form data
     const storedMatchingData = sessionStorage.getItem('matchingFormData')
     const matchingRedirect = sessionStorage.getItem('matchingRedirect')
     
@@ -36,26 +34,20 @@ export default function Signup() {
       try {
         const parsedData = JSON.parse(storedMatchingData)
         
-        // Auto-populate form with matching data
         setFormData(prev => ({
           ...prev,
           firstName: parsedData.firstName || '',
           lastName: parsedData.lastName || '',
           email: parsedData.email || '',
           phone: parsedData.phone || '',
-          // Note: We don't pre-fill password fields for security
         }))
         
         setHasPrefilledData(true)
-        
-        // Show success message
-        console.log('Auto-filled signup form with matching data')
       } catch (error) {
         console.error('Error parsing stored matching data:', error)
       }
     }
     
-    // Check for location state (alternative method)
     if (location.state?.prefillData) {
       const { prefillData } = location.state
       setFormData(prev => ({
@@ -69,7 +61,6 @@ export default function Signup() {
     }
   }, [location.state])
 
-  // 👈 NEW: Clear stored matching data after successful signup
   const clearStoredMatchingData = () => {
     sessionStorage.removeItem('matchingFormData')
     sessionStorage.removeItem('matchingRedirect')
@@ -104,7 +95,6 @@ export default function Signup() {
     return Object.keys(newErrors).length === 0
   }
 
-  // 👈 UPDATED: Firebase integration with redirect logic
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -114,10 +104,8 @@ export default function Signup() {
     setErrors({})
 
     try {
-      // Create full display name
       const displayName = `${formData.firstName.trim()} ${formData.lastName.trim()}`
       
-      // Sign up with Firebase
       const result = await signup(
         formData.email,
         formData.password,
@@ -132,21 +120,15 @@ export default function Signup() {
       )
 
       if (result.success) {
-        // 👈 NEW: Clear stored matching data
         clearStoredMatchingData()
         
-        // 👈 NEW: Check if we should redirect back to matching form
         const matchingRedirect = sessionStorage.getItem('matchingRedirect')
         
         if (matchingRedirect) {
-          // Clear the redirect flag
           sessionStorage.removeItem('matchingRedirect')
-          
-          // Show success message and redirect
           alert('Account created successfully! You can now submit your matching request.')
-          navigate('/personalized-match')
+          navigate('/personalized-match#match-form')
         } else {
-          // Navigate based on account type (original behavior)
           if (formData.accountType === 'lawyer') {
             navigate('/lawyer-dashboard')
           } else {
@@ -154,7 +136,6 @@ export default function Signup() {
           }
         }
       } else {
-        // Handle Firebase errors with user-friendly messages
         const errorMessage = result.error || 'Failed to create account'
         
         if (errorMessage.includes('email-already-in-use')) {
@@ -175,7 +156,6 @@ export default function Signup() {
     }
   }
 
-  // 👈 NEW: Google Sign-In Handler with redirect logic
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     setErrors({})
@@ -184,23 +164,18 @@ export default function Signup() {
       const result = await signInWithGoogle()
       
       if (result.success) {
-        // 👈 NEW: Clear stored matching data
         clearStoredMatchingData()
         
-        // 👈 NEW: Check if we should redirect back to matching form
         const matchingRedirect = sessionStorage.getItem('matchingRedirect')
         
         if (matchingRedirect) {
           sessionStorage.removeItem('matchingRedirect')
           alert('Signed in successfully! You can now submit your matching request.')
-          navigate('/personalized-match')
+          navigate('/personalized-match#match-form')
         } else {
-          // Check if user needs to select account type (new user)
           if (result.isNewUser) {
-            // You could redirect to account setup page
             navigate('/setup-profile')
           } else {
-            // Existing user - redirect based on role
             if (result.user?.role === 'lawyer') {
               navigate('/lawyer-dashboard')
             } else {
@@ -226,7 +201,6 @@ export default function Signup() {
       [name]: type === 'checkbox' ? checked : value
     }))
     
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -295,7 +269,6 @@ export default function Signup() {
             </div>
           </div>
 
-          {/* 👈 NEW: Pre-filled Data Indicator */}
           {hasPrefilledData && (
             <motion.div 
               className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg"
@@ -316,14 +289,12 @@ export default function Signup() {
             </motion.div>
           )}
 
-          {/* 👈 NEW: General Error Message */}
           {errors.general && (
             <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
               <p className="text-sm text-error">{errors.general}</p>
             </div>
           )}
 
-          {/* 👈 NEW: Google Sign-Up Button (Above form) */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
@@ -339,14 +310,12 @@ export default function Signup() {
             {isLoading ? 'Signing up...' : 'Continue with Google'}
           </button>
 
-          {/* 👈 Divider */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 border-t border-border"></div>
             <span className="text-textSecondary text-sm">OR</span>
             <div className="flex-1 border-t border-border"></div>
           </div>
 
-          {/* Account Type Selection */}
           <div className="mb-8">
             <label className="block text-sm font-medium mb-4">Select Account Type</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -439,7 +408,7 @@ export default function Signup() {
                       errors.email
                         ? 'border-error focus:border-error focus:ring-error/20'
                         : 'border-border focus:border-primary focus:ring-primary/20'
-                    }`}
+                  }`}
                   />
                 </div>
                 {errors.email && (
@@ -498,7 +467,6 @@ export default function Signup() {
                   </button>
                 </div>
                 
-                {/* Password Strength Indicator */}
                 {formData.password && (
                   <div className="mt-2">
                     <div className="flex justify-between text-sm mb-1">
@@ -624,7 +592,6 @@ export default function Signup() {
           </form>
         </motion.div>
 
-        {/* Benefits Section */}
         <motion.div 
           className="mt-8 grid md:grid-cols-3 gap-6"
           initial={{ opacity: 0, y: 20 }}
