@@ -127,7 +127,7 @@ export default function Signup() {
         if (matchingRedirect) {
           sessionStorage.removeItem('matchingRedirect')
           alert('Account created successfully! You can now submit your matching request.')
-          navigate('/personalized-match#match-form')
+          navigate('/personalized-match')
         } else {
           if (formData.accountType === 'lawyer') {
             navigate('/lawyer-dashboard')
@@ -171,7 +171,7 @@ export default function Signup() {
         if (matchingRedirect) {
           sessionStorage.removeItem('matchingRedirect')
           alert('Signed in successfully! You can now submit your matching request.')
-          navigate('/personalized-match#match-form')
+          navigate('/personalized-match')
         } else {
           if (result.isNewUser) {
             navigate('/setup-profile')
