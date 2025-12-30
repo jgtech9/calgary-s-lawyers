@@ -4,9 +4,19 @@ import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, Shield, User, ArrowRight, Building, Briefcase, Phone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
+// Constants for routes
+const ROUTES = {
+  HOME: '/',
+  USER_DASHBOARD: '/user-dashboard',
+  LAWYER_DASHBOARD: '/lawyer-dashboard',
+  SIGNUP: '/signup',
+  FORGOT_PASSWORD: '/forgot-password'
+}
+
 export default function Login() {
   const navigate = useNavigate()
   const { login, signInWithGoogle } = useAuth()
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,6 +25,18 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Centralized redirect logic - same as Signup page
+  const handleSuccessRedirect = (user) => {
+    // Check user role/accountType from the returned user object
+    const userRole = user?.role || user?.accountType || 'user'
+    
+    if (userRole === 'lawyer') {
+      navigate(ROUTES.LAWYER_DASHBOARD)
+    } else {
+      navigate(ROUTES.USER_DASHBOARD)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -25,13 +47,14 @@ export default function Login() {
       const result = await login(formData.email, formData.password)
       
       if (result.success) {
-        navigate('/')
+        // ✅ Redirect to appropriate dashboard based on user role
+        handleSuccessRedirect(result.user)
       } else {
         setError(result.error || 'Failed to sign in')
       }
     } catch (err) {
       console.error('Login error:', err)
-      setError('An unexpected error occurred.setError', 'An unexpected error occurred. Please try again.')
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -45,7 +68,8 @@ export default function Login() {
       const result = await signInWithGoogle()
       
       if (result.success) {
-        navigate('/')
+        // ✅ Redirect to appropriate dashboard based on user role
+        handleSuccessRedirect(result.user)
       } else {
         setError(result.error || 'Failed to sign in with Google')
       }
@@ -74,13 +98,14 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-surface/50 to-background py-12 px-4">
       <div className="max-w-6xl mx-auto">
+        {/* Header */}
         <motion.div 
           className="text-center mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Link to="/" className="inline-flex items-center gap-2 text-textSecondary hover:text-text transition-colors mb-6">
+          <Link to={ROUTES.HOME} className="inline-flex items-center gap-2 text-textSecondary hover:text-text transition-colors mb-6">
             <ArrowRight className="w-4 h-4 rotate-180" />
             Back to Home
           </Link>
@@ -93,6 +118,7 @@ export default function Login() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
+          {/* Login Form Card */}
           <motion.div 
             className="bg-surface border border-border rounded-2xl p-8"
             initial={{ opacity: 0, x: -20 }}
@@ -109,6 +135,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Error Message */}
             {error && (
               <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
                 <p className="text-error">{error}</p>
@@ -116,6 +143,7 @@ export default function Login() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email Field */}
               <div>
                 <label className="block text-sm font-medium mb-2">Email Address</label>
                 <div className="relative">
@@ -132,6 +160,7 @@ export default function Login() {
                 </div>
               </div>
 
+              {/* Password Field */}
               <div>
                 <label className="block text-sm font-medium mb-2">Password</label>
                 <div className="relative">
@@ -164,12 +193,13 @@ export default function Login() {
                     />
                     <span className="text-sm">Remember me</span>
                   </label>
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  <Link to={ROUTES.FORGOT_PASSWORD} className="text-sm text-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -188,6 +218,7 @@ export default function Login() {
                 )}
               </button>
 
+              {/* Divider */}
               <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border"></div>
@@ -197,6 +228,7 @@ export default function Login() {
                 </div>
               </div>
 
+              {/* Social Login Buttons */}
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -223,21 +255,24 @@ export default function Login() {
                 </button>
               </div>
 
+              {/* Sign Up Link */}
               <p className="text-center text-textSecondary">
                 Don't have an account?{' '}
-                <Link to="/signup" className="text-primary font-semibold hover:underline">
+                <Link to={ROUTES.SIGNUP} className="text-primary font-semibold hover:underline">
                   Sign up for free
                 </Link>
               </p>
             </form>
           </motion.div>
 
+          {/* Right Sidebar */}
           <motion.div 
             className="space-y-8"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
+            {/* Account Types Info */}
             <div className="bg-surface border border-border rounded-2xl p-6">
               <h3 className="text-xl font-bold mb-6">What type of account do you need?</h3>
               <div className="space-y-4">
@@ -263,6 +298,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Benefits */}
             <div className="bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20 rounded-2xl p-6">
               <h3 className="text-xl font-bold mb-6">Benefits of Your Account</h3>
               <div className="space-y-4">
@@ -281,6 +317,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Emergency Help */}
             <div className="bg-surface border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">

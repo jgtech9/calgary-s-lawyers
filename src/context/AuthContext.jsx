@@ -9,8 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -27,6 +26,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userData, setUserData] = useState(null); // Store full user data from Firestore
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,29 +36,91 @@ export const AuthProvider = ({ children }) => {
     setPersistence(auth, browserLocalPersistence).catch(console.error);
   }, []);
 
-  // Sign up new user
+  // Helper function to get user data from Firestore
+  const getUserData = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        return userDoc.data();
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  };
+
+  // Helper function to determine user role
+  const determineRole = async (user, firestoreData = null) => {
+    try {
+      // First check Firestore data
+      if (firestoreData?.role) {
+        return firestoreData.role;
+      }
+
+      // Fetch from Firestore if not provided
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        return data.role || 'user';
+      }
+
+      // Check for custom claims as fallback
+      const idTokenResult = await user.getIdTokenResult();
+      if (idTokenResult.claims.admin) return 'admin';
+      if (idTokenResult.claims.lawyer) return 'lawyer';
+
+      return 'user';
+    } catch (error) {
+      console.error('Error determining user role:', error);
+      return 'user';
+    }
+  };
+
+  // Sign up new user - FIXED
   const signup = async (email, password, displayName, additionalData = {}) => {
     try {
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+
       // Update profile with display name
       await updateProfile(userCredential.user, { displayName });
-      
+
+      // ✅ FIX: Check for both 'role' and 'accountType'
+      const role = additionalData.role || additionalData.accountType || 'user';
+
       // Create user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      const userDocData = {
         uid: userCredential.user.uid,
         email,
         displayName,
-        role: additionalData.role || 'user',
+        firstName: additionalData.firstName || '',
+        lastName: additionalData.lastName || '',
+        role: role,
         phone: additionalData.phone || '',
+        subscribeNewsletter: additionalData.subscribeNewsletter || false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isActive: true,
-        emailVerified: false
-      });
-      
-      return { success: true, user: userCredential.user };
+        emailVerified: false,
+        provider: 'email'
+      };
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), userDocData);
+
+      // Update local state
+      setUserRole(role);
+      setUserData(userDocData);
+
+      // ✅ FIX: Return user object WITH role
+      return {
+        success: true,
+        user: {
+          ...userCredential.user,
+          role: role,
+          ...userDocData
+        }
+      };
     } catch (error) {
       console.error('Signup error:', error);
       setError(error.message);
@@ -66,11 +128,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login with email/password
+  // Login with email/password - FIXED
   const login = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      return { success: true, user: result.user };
+
+      // ✅ FIX: Fetch user data from Firestore to get role
+      const firestoreData = await getUserData(result.user.uid);
+      const role = await determineRole(result.user, firestoreData);
+
+      // Update local state
+      setUserRole(role);
+      setUserData(firestoreData);
+
+      // ✅ FIX: Return user object WITH role
+      return {
+        success: true,
+        user: {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          role: role,
+          ...firestoreData
+        }
+      };
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message);
@@ -78,28 +160,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Sign In - FIXED VERSION
+  // Google Sign In - FIXED
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      
-      // Add scopes if needed
+
       provider.addScope('profile');
       provider.addScope('email');
-      
-      // Set custom parameters
+
       provider.setCustomParameters({
         prompt: 'select_account'
       });
-      
+
       const result = await signInWithPopup(auth, provider);
-      
+
       // Check if user document exists
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-      
-      // Create user document if it doesn't exist
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', result.user.uid), {
+      const isNewUser = !userDoc.exists();
+
+      let firestoreData;
+      let role = 'user';
+
+      if (isNewUser) {
+        // Create new user document
+        firestoreData = {
           uid: result.user.uid,
           email: result.user.email,
           displayName: result.user.displayName,
@@ -110,21 +194,37 @@ export const AuthProvider = ({ children }) => {
           isActive: true,
           emailVerified: result.user.emailVerified,
           provider: 'google'
-        });
+        };
+
+        await setDoc(doc(db, 'users', result.user.uid), firestoreData);
+      } else {
+        // Get existing user data
+        firestoreData = userDoc.data();
+        role = firestoreData.role || 'user';
       }
-      
-      return { 
-        success: true, 
-        user: result.user,
-        isNewUser: !userDoc.exists()
+
+      // Update local state
+      setUserRole(role);
+      setUserData(firestoreData);
+
+      // ✅ FIX: Return user object WITH role
+      return {
+        success: true,
+        user: {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          role: role,
+          ...firestoreData
+        },
+        isNewUser
       };
     } catch (error) {
       console.error('Google sign-in error:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
-      console.error('Error details:', error.customData);
-      
-      // Provide more specific error messages
+
       let errorMessage = error.message;
       if (error.code === 'auth/popup-blocked') {
         errorMessage = 'Popup was blocked by your browser. Please allow popups for this site.';
@@ -133,7 +233,7 @@ export const AuthProvider = ({ children }) => {
       } else if (error.code === 'auth/unauthorized-domain') {
         errorMessage = 'This domain is not authorized for OAuth operations. Please check Firebase console settings.';
       }
-      
+
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -145,6 +245,7 @@ export const AuthProvider = ({ children }) => {
       await signOut(auth);
       setCurrentUser(null);
       setUserRole(null);
+      setUserData(null);
       return { success: true };
     } catch (error) {
       console.error('Logout error:', error);
@@ -163,42 +264,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Fetch user role and data from Firestore
-  const fetchUserRole = async (user) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        return userData.role || 'user';
-      }
-      
-      // Check for custom claims as fallback
-      const idTokenResult = await user.getIdTokenResult();
-      if (idTokenResult.claims.admin) return 'admin';
-      if (idTokenResult.claims.lawyer) return 'lawyer';
-      
-      return 'user';
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-      return 'user';
-    }
-  };
-
   // Monitor auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
-      
+
       if (user) {
-        const role = await fetchUserRole(user);
-        setUserRole(role);
-        setCurrentUser(user);
+        try {
+          const firestoreData = await getUserData(user.uid);
+          const role = await determineRole(user, firestoreData);
+
+          setCurrentUser(user);
+          setUserRole(role);
+          setUserData(firestoreData);
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+          setCurrentUser(user);
+          setUserRole('user');
+          setUserData(null);
+        }
       } else {
         setCurrentUser(null);
         setUserRole(null);
+        setUserData(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -207,6 +297,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    userData,
     userRole,
     loading,
     error,
@@ -217,6 +308,7 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     isAdmin: userRole === 'admin',
     isLawyer: userRole === 'lawyer',
+    isUser: userRole === 'user',
     isAuthenticated: !!currentUser
   };
 

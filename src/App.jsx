@@ -43,6 +43,7 @@ import LawyerDashboard from './pages/LawyerDashboard';
 import Admin from './pages/Admin';
 import Notifications from './pages/Notifications';
 import PersonalizedMatch from './pages/PersonalizedMatch';
+import UserDashboard from './pages/UserDashboard';
 
 // Development-only pages
 import TestFirebase from './pages/TestFirebase';
@@ -142,6 +143,16 @@ function App() {
                   }
                 />
 
+                {/* Protected Routes - Regular Users */}
+                <Route
+                  path="user-dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['user', 'lawyer', 'admin']}>
+                      <UserDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Protected Routes - Admin Only */}
                 <Route
                   path="admin"
@@ -161,6 +172,8 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+
+								
 
                 {/* Personalized Match - Public Route (auth handled internally) */}
                 <Route path="personalized-match" element={<PersonalizedMatch />} />

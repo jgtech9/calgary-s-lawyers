@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, User, Phone, Building, Briefcase, Shield, Check, ArrowRight, Target, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, User, Phone, Building, Briefcase, Shield, Check, ArrowRight, Target } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+
+// Constants for routes
+const ROUTES = {
+  HOME: '/',
+  USER_DASHBOARD: '/user-dashboard',
+  LAWYER_DASHBOARD: '/lawyer-dashboard',
+  PERSONALIZED_MATCH: '/personalized-match',
+  LOGIN: '/login',
+  TERMS: '/terms',
+  PRIVACY: '/privacy'
+}
 
 export default function Signup() {
   const navigate = useNavigate()
   const location = useLocation()
   const { signup, signInWithGoogle } = useAuth()
-  
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -26,14 +37,40 @@ export default function Signup() {
   const [errors, setErrors] = useState({})
   const [hasPrefilledData, setHasPrefilledData] = useState(false)
 
+  const accountTypes = [
+    { id: 'individual', icon: User, label: 'Individual', description: 'Looking for legal help' },
+    { id: 'business', icon: Building, label: 'Business', description: 'Corporate legal needs' },
+    { id: 'lawyer', icon: Briefcase, label: 'Lawyer', description: 'Professional account' },
+  ]
+
+  // Centralized redirect logic
+  const handleSuccessRedirect = (userRole, isFromMatching = false) => {
+    if (isFromMatching) {
+      sessionStorage.removeItem('matchingRedirect')
+      alert('Success! You can now submit your matching request.')
+      navigate(ROUTES.PERSONALIZED_MATCH)
+      return
+    }
+
+    // Redirect based on user role/account type
+    if (userRole === 'lawyer') {
+      navigate(ROUTES.LAWYER_DASHBOARD)
+    } else {
+      navigate(ROUTES.USER_DASHBOARD)
+    }
+  }
+
+  const clearStoredMatchingData = () => {
+    sessionStorage.removeItem('matchingFormData')
+    sessionStorage.removeItem('matchingRedirect')
+  }
+
   useEffect(() => {
     const storedMatchingData = sessionStorage.getItem('matchingFormData')
-    const matchingRedirect = sessionStorage.getItem('matchingRedirect')
-    
+
     if (storedMatchingData) {
       try {
         const parsedData = JSON.parse(storedMatchingData)
-        
         setFormData(prev => ({
           ...prev,
           firstName: parsedData.firstName || '',
@@ -41,13 +78,12 @@ export default function Signup() {
           email: parsedData.email || '',
           phone: parsedData.phone || '',
         }))
-        
         setHasPrefilledData(true)
       } catch (error) {
         console.error('Error parsing stored matching data:', error)
       }
     }
-    
+
     if (location.state?.prefillData) {
       const { prefillData } = location.state
       setFormData(prev => ({
@@ -61,51 +97,36 @@ export default function Signup() {
     }
   }, [location.state])
 
-  const clearStoredMatchingData = () => {
-    sessionStorage.removeItem('matchingFormData')
-    sessionStorage.removeItem('matchingRedirect')
-  }
-
-  const accountTypes = [
-    { id: 'individual', icon: User, label: 'Individual', description: 'Looking for legal help' },
-    { id: 'business', icon: Building, label: 'Business', description: 'Corporate legal needs' },
-    { id: 'lawyer', icon: Briefcase, label: 'Lawyer', description: 'Professional account' },
-  ]
-
   const validateForm = () => {
     const newErrors = {}
-    
+
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required'
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required'
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
-    
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
-    
     if (!formData.password) newErrors.password = 'Password is required'
     else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters'
-    
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
-    
     if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms'
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
     setIsLoading(true)
     setErrors({})
 
     try {
       const displayName = `${formData.firstName.trim()} ${formData.lastName.trim()}`
-      
+
       const result = await signup(
         formData.email,
         formData.password,
@@ -121,32 +142,10 @@ export default function Signup() {
 
       if (result.success) {
         clearStoredMatchingData()
-        
         const matchingRedirect = sessionStorage.getItem('matchingRedirect')
-        
-        if (matchingRedirect) {
-          sessionStorage.removeItem('matchingRedirect')
-          alert('Account created successfully! You can now submit your matching request.')
-          navigate('/personalized-match')
-        } else {
-          if (formData.accountType === 'lawyer') {
-            navigate('/lawyer-dashboard')
-          } else {
-            navigate('/')
-          }
-        }
+        handleSuccessRedirect(formData.accountType, !!matchingRedirect)
       } else {
-        const errorMessage = result.error || 'Failed to create account'
-        
-        if (errorMessage.includes('email-already-in-use')) {
-          setErrors({ email: 'This email is already registered. Please sign in instead.' })
-        } else if (errorMessage.includes('weak-password')) {
-          setErrors({ password: 'Password is too weak. Please choose a stronger password.' })
-        } else if (errorMessage.includes('invalid-email')) {
-          setErrors({ email: 'Please enter a valid email address.' })
-        } else {
-          setErrors({ general: errorMessage })
-        }
+        handleSignupError(result.error)
       }
     } catch (err) {
       console.error('Signup error:', err)
@@ -162,27 +161,14 @@ export default function Signup() {
 
     try {
       const result = await signInWithGoogle()
-      
+
       if (result.success) {
         clearStoredMatchingData()
-        
         const matchingRedirect = sessionStorage.getItem('matchingRedirect')
         
-        if (matchingRedirect) {
-          sessionStorage.removeItem('matchingRedirect')
-          alert('Signed in successfully! You can now submit your matching request.')
-          navigate('/personalized-match')
-        } else {
-          if (result.isNewUser) {
-            navigate('/setup-profile')
-          } else {
-            if (result.user?.role === 'lawyer') {
-              navigate('/lawyer-dashboard')
-            } else {
-              navigate('/')
-            }
-          }
-        }
+        // Determine user role - check result.user.role or default to 'user'
+        const userRole = result.user?.role || result.user?.accountType || 'user'
+        handleSuccessRedirect(userRole, !!matchingRedirect)
       } else {
         setErrors({ general: result.error || 'Failed to sign in with Google' })
       }
@@ -194,13 +180,27 @@ export default function Signup() {
     }
   }
 
+  const handleSignupError = (errorMessage) => {
+    const message = errorMessage || 'Failed to create account'
+
+    if (message.includes('email-already-in-use')) {
+      setErrors({ email: 'This email is already registered. Please sign in instead.' })
+    } else if (message.includes('weak-password')) {
+      setErrors({ password: 'Password is too weak. Please choose a stronger password.' })
+    } else if (message.includes('invalid-email')) {
+      setErrors({ email: 'Please enter a valid email address.' })
+    } else {
+      setErrors({ general: message })
+    }
+  }
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -210,15 +210,15 @@ export default function Signup() {
     setFormData(prev => ({ ...prev, accountType: typeId }))
   }
 
-  const passwordStrength = () => {
+  const getPasswordStrength = () => {
     if (!formData.password) return { score: 0, label: 'None', color: 'border-border' }
-    
+
     let score = 0
     if (formData.password.length >= 8) score++
     if (/[A-Z]/.test(formData.password)) score++
     if (/[0-9]/.test(formData.password)) score++
     if (/[^A-Za-z0-9]/.test(formData.password)) score++
-    
+
     const levels = [
       { label: 'Weak', color: 'border-error' },
       { label: 'Fair', color: 'border-warning' },
@@ -226,22 +226,23 @@ export default function Signup() {
       { label: 'Strong', color: 'border-success' },
       { label: 'Very Strong', color: 'border-success' },
     ]
-    
+
     return levels[Math.min(score, levels.length - 1)]
   }
 
-  const strength = passwordStrength()
+  const strength = getPasswordStrength()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-surface/50 to-background py-12 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Header */}
         <motion.div 
           className="text-center mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Link to="/" className="inline-flex items-center gap-2 text-textSecondary hover:text-text transition-colors mb-6">
+          <Link to={ROUTES.HOME} className="inline-flex items-center gap-2 text-textSecondary hover:text-text transition-colors mb-6">
             <ArrowRight className="w-4 h-4 rotate-180" />
             Back to Home
           </Link>
@@ -253,12 +254,14 @@ export default function Signup() {
           </p>
         </motion.div>
 
+        {/* Main Form Card */}
         <motion.div 
           className="bg-surface border border-border rounded-2xl p-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
+          {/* Card Header */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <Shield className="w-6 h-6 text-primary" />
@@ -269,6 +272,7 @@ export default function Signup() {
             </div>
           </div>
 
+          {/* Prefilled Data Notice */}
           {hasPrefilledData && (
             <motion.div 
               className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg"
@@ -289,12 +293,14 @@ export default function Signup() {
             </motion.div>
           )}
 
+          {/* General Error */}
           {errors.general && (
             <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
               <p className="text-sm text-error">{errors.general}</p>
             </div>
           )}
 
+          {/* Google Sign In Button */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
@@ -310,12 +316,14 @@ export default function Signup() {
             {isLoading ? 'Signing up...' : 'Continue with Google'}
           </button>
 
+          {/* Divider */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 border-t border-border"></div>
             <span className="text-textSecondary text-sm">OR</span>
             <div className="flex-1 border-t border-border"></div>
           </div>
 
+          {/* Account Type Selection */}
           <div className="mb-8">
             <label className="block text-sm font-medium mb-4">Select Account Type</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -349,7 +357,9 @@ export default function Signup() {
             </div>
           </div>
 
+          {/* Signup Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name Fields */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">First Name</label>
@@ -366,9 +376,7 @@ export default function Signup() {
                       : 'border-border focus:border-primary focus:ring-primary/20'
                   }`}
                 />
-                {errors.firstName && (
-                  <p className="mt-1 text-sm text-error">{errors.firstName}</p>
-                )}
+                {errors.firstName && <p className="mt-1 text-sm text-error">{errors.firstName}</p>}
               </div>
 
               <div>
@@ -386,12 +394,11 @@ export default function Signup() {
                       : 'border-border focus:border-primary focus:ring-primary/20'
                   }`}
                 />
-                {errors.lastName && (
-                  <p className="mt-1 text-sm text-error">{errors.lastName}</p>
-                )}
+                {errors.lastName && <p className="mt-1 text-sm text-error">{errors.lastName}</p>}
               </div>
             </div>
 
+            {/* Contact Fields */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Email Address</label>
@@ -408,12 +415,10 @@ export default function Signup() {
                       errors.email
                         ? 'border-error focus:border-error focus:ring-error/20'
                         : 'border-border focus:border-primary focus:ring-primary/20'
-                  }`}
+                    }`}
                   />
                 </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-error">{errors.email}</p>
-                )}
+                {errors.email && <p className="mt-1 text-sm text-error">{errors.email}</p>}
               </div>
 
               <div>
@@ -434,12 +439,11 @@ export default function Signup() {
                     }`}
                   />
                 </div>
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-error">{errors.phone}</p>
-                )}
+                {errors.phone && <p className="mt-1 text-sm text-error">{errors.phone}</p>}
               </div>
             </div>
 
+            {/* Password Fields */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Password</label>
@@ -466,7 +470,7 @@ export default function Signup() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                
+
                 {formData.password && (
                   <div className="mt-2">
                     <div className="flex justify-between text-sm mb-1">
@@ -488,10 +492,7 @@ export default function Signup() {
                     </div>
                   </div>
                 )}
-                
-                {errors.password && (
-                  <p className="mt-1 text-sm text-error">{errors.password}</p>
-                )}
+                {errors.password && <p className="mt-1 text-sm text-error">{errors.password}</p>}
               </div>
 
               <div>
@@ -519,12 +520,11 @@ export default function Signup() {
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                {errors.confirmPassword && (
-                  <p className="mt-1 text-sm text-error">{errors.confirmPassword}</p>
-                )}
+                {errors.confirmPassword && <p className="mt-1 text-sm text-error">{errors.confirmPassword}</p>}
               </div>
             </div>
 
+            {/* Checkboxes */}
             <div className="space-y-4">
               <label className="flex items-start gap-3">
                 <input
@@ -537,17 +537,11 @@ export default function Signup() {
                 <div>
                   <span className="text-sm">
                     I agree to the{' '}
-                    <Link to="/terms" className="text-primary hover:underline">
-                      Terms of Service
-                    </Link>
+                    <Link to={ROUTES.TERMS} className="text-primary hover:underline">Terms of Service</Link>
                     {' '}and{' '}
-                    <Link to="/privacy" className="text-primary hover:underline">
-                      Privacy Policy
-                    </Link>
+                    <Link to={ROUTES.PRIVACY} className="text-primary hover:underline">Privacy Policy</Link>
                   </span>
-                  {errors.agreeToTerms && (
-                    <p className="mt-1 text-sm text-error">{errors.agreeToTerms}</p>
-                  )}
+                  {errors.agreeToTerms && <p className="mt-1 text-sm text-error">{errors.agreeToTerms}</p>}
                 </div>
               </label>
 
@@ -559,12 +553,11 @@ export default function Signup() {
                   onChange={handleChange}
                   className="rounded border-border text-primary focus:ring-primary"
                 />
-                <span className="text-sm">
-                  Subscribe to our newsletter for legal tips and updates
-                </span>
+                <span className="text-sm">Subscribe to our newsletter for legal tips and updates</span>
               </label>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -585,13 +578,14 @@ export default function Signup() {
 
             <p className="text-center text-textSecondary">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary font-semibold hover:underline">
+              <Link to={ROUTES.LOGIN} className="text-primary font-semibold hover:underline">
                 Sign in here
               </Link>
             </p>
           </form>
         </motion.div>
 
+        {/* Benefits Section */}
         <motion.div 
           className="mt-8 grid md:grid-cols-3 gap-6"
           initial={{ opacity: 0, y: 20 }}
@@ -599,21 +593,9 @@ export default function Signup() {
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           {[
-            {
-              title: 'Verified Lawyers Only',
-              description: 'All professionals are thoroughly vetted and verified',
-              icon: '✅'
-            },
-            {
-              title: 'Free Consultations',
-              description: 'Schedule initial consultations at no cost',
-              icon: '💬'
-            },
-            {
-              title: 'Secure & Private',
-              description: 'Your information is protected with bank-level security',
-              icon: '🔒'
-            },
+            { title: 'Verified Lawyers Only', description: 'All professionals are thoroughly vetted and verified', icon: '✅' },
+            { title: 'Free Consultations', description: 'Schedule initial consultations at no cost', icon: '💬' },
+            { title: 'Secure & Private', description: 'Your information is protected with bank-level security', icon: '🔒' },
           ].map((benefit, index) => (
             <div key={index} className="bg-surface border border-border rounded-xl p-6 text-center">
               <div className="text-3xl mb-4">{benefit.icon}</div>
