@@ -271,7 +271,7 @@ export default function PersonalizedMatch() {
             <div className="flex flex-col sm:flex-row gap-4">
               <a 
                 href="#match-form"
-                className="px-8 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                className="px-8 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors animate-pulse flex items-center justify-center gap-2"
               >
                 <Target className="w-5 h-5" />
                 Start Your Match Request

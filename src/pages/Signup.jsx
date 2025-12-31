@@ -132,7 +132,7 @@ export default function Signup() {
           if (formData.accountType === 'lawyer') {
             navigate('/lawyer-dashboard')
           } else {
-            navigate('/')
+            navigate('/user-dashboard')
           }
         }
       } else {
@@ -179,7 +179,7 @@ export default function Signup() {
             if (result.user?.role === 'lawyer') {
               navigate('/lawyer-dashboard')
             } else {
-              navigate('/')
+              navigate('/user-dashboard')
             }
           }
         }

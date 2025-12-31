@@ -185,7 +185,7 @@ export default function HowItWorks() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link 
                 to="/personalized-match"
-                className="px-8 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                className="px-8 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors animate-pulse flex items-center justify-center gap-2"
               >
                 Start Your Case Review
                 <CheckCircle className="w-5 h-5" />

@@ -43,6 +43,7 @@ import LawyerDashboard from './pages/LawyerDashboard';
 import Admin from './pages/Admin';
 import Notifications from './pages/Notifications';
 import PersonalizedMatch from './pages/PersonalizedMatch';
+import UserDashboard from './pages/UserDashboard';
 
 // Development-only pages
 import TestFirebase from './pages/TestFirebase';
@@ -157,6 +158,16 @@ function App() {
                   path="notifications"
                   element={
                     <ProtectedRoute redirectTo="/login">
+                      <Notifications />
+                    </ProtectedRoute>
+                  }
+                />
+
+								 {/* Protected Routes - All Authenticated Users */}
+                <Route
+                  path="signin"
+                  element={
+                    <ProtectedRoute redirectTo="/user-dashboard">
                       <Notifications />
                     </ProtectedRoute>
                   }
